@@ -21,7 +21,9 @@ jobs:
 
       - name: Install Boost headers (macOS)
         if: runner.os == 'macOS'
-        run: brew install boost
+        run: |
+          brew install boost
+          echo "CPATH=$(brew --prefix boost)/include:$CPATH" >> "$GITHUB_ENV"
 
       - name: Install Boost headers (Windows)
         if: runner.os == 'Windows'
