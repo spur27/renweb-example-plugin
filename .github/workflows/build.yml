@@ -1,0 +1,50 @@
+name: Build Plugin
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Boost headers (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y libboost-dev
+
+      - name: Install Boost headers (macOS)
+        if: runner.os == 'macOS'
+        run: brew install boost
+
+      - name: Install Boost headers (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          vcpkg install boost-json:x64-windows
+          mkdir -p include
+          cp -r "C:/vcpkg/installed/x64-windows/include/boost" include/
+
+      - name: Build (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: make
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: make
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: renweb_example_plugin-${{ matrix.os }}
+          path: |
+            *.so
+            *.dylib
+            *.dll

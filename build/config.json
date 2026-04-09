@@ -1,0 +1,15 @@
+{
+    "__defaults__": {
+        "title_bar": true,
+        "size": {
+            "width": 900,
+            "height": 640
+        },
+        "resizable": true,
+        "opacity": 1
+    },
+    "test": {
+        "title": "RenWeb Example Plugin — Plugin Test",
+        "merge_defaults": true
+    }
+}

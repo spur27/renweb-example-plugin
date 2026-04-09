@@ -1,0 +1,7 @@
+{
+    "title": "RenWeb Example Plugin",
+    "version": "0.0.1",
+    "starting_pages": [
+        "test"
+    ]
+}

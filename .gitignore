@@ -1,0 +1,18 @@
+# Build outputs
+*.so
+*.dylib
+*.dll
+*.o
+*.obj
+*.a
+src/.build/
+
+# Release output
+release/
+
+# Test environment (fetched at project creation time)
+build/content/
+build/plugins/
+build/renweb-*
+build/*.exe
+build/log*.txt
