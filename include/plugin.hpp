@@ -197,10 +197,10 @@ namespace RenWeb {
 // Template for plugin factory function
 // Plugin developers should implement this in their plugin source file:
 /*
-extern "C" {
-    RenWeb::Plugin* createPlugin(std::shared_ptr<RenWeb::ILogger> logger) {
-        // Replace with your custom plugin class that inherits from RenWeb::Plugin
-        return new RenWeb::Plugin("PluginName", "1.0.0", "Plugin Description", logger);
-    }
+extern "C" PLUGIN_EXPORT RenWeb::Plugin* createPlugin(std::shared_ptr<RenWeb::ILogger> logger) {
+    return new <YOUR_PLUGIN_CLASS>(logger);
+}
+extern "C" PLUGIN_EXPORT void destroyPlugin(RenWeb::Plugin* plugin) {
+    delete plugin;
 }
 */

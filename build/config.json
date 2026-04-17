@@ -9,7 +9,7 @@
         "opacity": 1
     },
     "test": {
-        "title": "RenWeb Example Plugin — Plugin Test",
+        "title": "My RenWeb Plugin — Plugin Test",
         "merge_defaults": true
     }
 }

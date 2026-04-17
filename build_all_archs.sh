@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# build_all_archs.sh — build renweb_example_plugin plugin for all supported architectures
+# build_all_archs.sh — build my_renweb_plugin plugin for all supported architectures
 #
 # Usage:
-#   ./build_all_archs.sh
+#   ./build_all_archs.sh [--arch <arch>] ...
 #
 # On Linux:   builds all 13 toolchain architectures (requires cross-compilers)
 # On macOS:   builds arm64 + x86_64, then creates a universal .dylib via lipo
@@ -10,25 +10,68 @@
 
 set -e
 
-RESET='\033[0m'
-RED='\033[31m'
-GREEN='\033[32m'
-YELLOW='\033[33m'
-MAGENTA='\033[35m'
-CYAN='\033[36m'
-BOLD='\033[1m'
+RESET=$(printf '\033[0m')
+RED=$(printf '\033[31m')
+GREEN=$(printf '\033[32m')
+YELLOW=$(printf '\033[33m')
+MAGENTA=$(printf '\033[35m')
+CYAN=$(printf '\033[36m')
+BOLD=$(printf '\033[1m')
 
 LINUX_TOOLCHAINS="x86_64-linux-gnu i686-linux-gnu aarch64-linux-gnu arm-linux-gnueabihf mips-linux-gnu mipsel-linux-gnu mips64-linux-gnuabi64 mips64el-linux-gnuabi64 powerpc-linux-gnu powerpc64-linux-gnu riscv64-linux-gnu s390x-linux-gnu sparc64-linux-gnu"
 
-print_header()  { echo -e "$CYAN$BOLD========================================$RESET"; echo -e "$CYAN$BOLD$1$RESET"; echo -e "$CYAN$BOLD========================================$RESET"; }
-print_info()    { echo -e "$GREEN$BOLD[INFO]$RESET $1"; }
-print_warning() { echo -e "$YELLOW$BOLD[WARN]$RESET $1"; }
-print_error()   { echo -e "$RED$BOLD[ERROR]$RESET $1"; }
-print_success() { echo -e "$GREEN$BOLD[SUCCESS]$RESET $1"; }
-print_building(){ echo -e "$MAGENTA$BOLD[BUILD]$RESET Building for $CYAN$1$RESET ($YELLOW$2$RESET)"; }
+print_header()  { echo "${CYAN}${BOLD}========================================${RESET}"; echo "${CYAN}${BOLD}$1${RESET}"; echo "${CYAN}${BOLD}========================================${RESET}"; }
+print_info()    { echo "${GREEN}${BOLD}[INFO]${RESET} $1"; }
+print_warning() { echo "${YELLOW}${BOLD}[WARN]${RESET} $1"; }
+print_error()   { echo "${RED}${BOLD}[ERROR]${RESET} $1"; }
+print_success() { echo "${GREEN}${BOLD}[SUCCESS]${RESET} $1"; }
+print_building(){ echo "${MAGENTA}${BOLD}[BUILD]${RESET} Building for ${CYAN}$1${RESET} (${YELLOW}$2${RESET})"; }
 
 command_exists()  { command -v "$1" >/dev/null 2>&1; }
 toolchain_exists(){ command_exists "$1-gcc" && command_exists "$1-g++"; }
+
+normalize_arch() {
+    case "$1" in
+        x86_64|x64|amd64)              echo "x86_64"    ;;
+        x86_32|x86|i686|i386|ia32)    echo "x86_32"    ;;
+        arm64|aarch64)                 echo "arm64"     ;;
+        arm32|armhf|armv7|armv7l)     echo "arm32"     ;;
+        mips32|mips)                   echo "mips32"    ;;
+        mips32el|mipsel)               echo "mips32el"  ;;
+        mips64)                        echo "mips64"    ;;
+        mips64el)                      echo "mips64el"  ;;
+        powerpc32|ppc|ppc32)           echo "powerpc32" ;;
+        powerpc64|ppc64)               echo "powerpc64" ;;
+        riscv64)                       echo "riscv64"   ;;
+        s390x)                         echo "s390x"     ;;
+        sparc64)                       echo "sparc64"   ;;
+        *)                             echo "$1"        ;;
+    esac
+}
+FILTER_ARCHS=""
+arch_matches() {
+    [ -z "$FILTER_ARCHS" ] && return 0
+    for _fa in $FILTER_ARCHS; do [ "$_fa" = "$1" ] && return 0; done
+    return 1
+}
+toolchain_to_arch() {
+    case "$1" in
+        arm-linux-gnueabihf)         echo "arm32"     ;;
+        aarch64-linux-gnu)           echo "arm64"     ;;
+        i686-linux-gnu)              echo "x86_32"    ;;
+        x86_64-linux-gnu)            echo "x86_64"    ;;
+        mips-linux-gnu)              echo "mips32"    ;;
+        mipsel-linux-gnu)            echo "mips32el"  ;;
+        mips64-linux-gnuabi64)       echo "mips64"    ;;
+        mips64el-linux-gnuabi64)     echo "mips64el"  ;;
+        powerpc-linux-gnu)           echo "powerpc32" ;;
+        powerpc64-linux-gnu)         echo "powerpc64" ;;
+        riscv64-linux-gnu)           echo "riscv64"   ;;
+        s390x-linux-gnu)             echo "s390x"     ;;
+        sparc64-linux-gnu)           echo "sparc64"   ;;
+        *)                           echo "$1"        ;;
+    esac
+}
 
 build_for_toolchain() {
     local toolchain=$1 arch_name=$2
@@ -69,7 +112,7 @@ detect_os() {
 
 build_linux() {
     local success_count=0 fail_count=0 total_count=0
-    print_header "Building renweb_example_plugin for Linux (13 architectures)"
+    print_header "Building my_renweb_plugin for Linux (13 architectures)"
     print_info "Host: $HOST_ARCH"
     echo ""
 
@@ -90,17 +133,31 @@ build_linux() {
         sparc64)       host_toolchain="sparc64-linux-gnu" ;;
     esac
 
-    total_count=$((total_count + 1))
-    if build_native "native ($HOST_ARCH)"; then
-        success_count=$((success_count + 1))
+    local native_arch
+    native_arch=$(normalize_arch "$HOST_ARCH")
+    if arch_matches "$native_arch"; then
+        total_count=$((total_count + 1))
+        if build_native "native ($HOST_ARCH)"; then
+            success_count=$((success_count + 1))
+        else
+            fail_count=$((fail_count + 1))
+        fi
+        echo ""
     else
-        fail_count=$((fail_count + 1))
+        print_info "Skipping native ($HOST_ARCH) — not in arch filter"
+        echo ""
     fi
-    echo ""
 
     for toolchain in $LINUX_TOOLCHAINS; do
         if [ "$toolchain" = "$host_toolchain" ]; then
             print_info "Skipping $toolchain (already built natively)"
+            continue
+        fi
+        local tc_arch
+        tc_arch=$(toolchain_to_arch "$toolchain")
+        if ! arch_matches "$tc_arch"; then
+            print_info "Skipping $toolchain ($tc_arch) — not in arch filter"
+            echo ""
             continue
         fi
         total_count=$((total_count + 1))
@@ -118,7 +175,7 @@ build_linux() {
     done
 
     print_header "Build Summary"
-    echo -e "$GREEN Successful: $BOLD$success_count$RESET  $RED Failed: $BOLD$fail_count$RESET  $CYAN Total: $BOLD$total_count$RESET"
+    echo "${GREEN}Successful: ${BOLD}${success_count}${RESET}  ${RED}Failed: ${BOLD}${fail_count}${RESET}  ${CYAN}Total: ${BOLD}${total_count}${RESET}"
     if [ $success_count -gt 0 ]; then
         print_info "Output: ./build/plugins/"
         ls -lh build/plugins/ 2>/dev/null | grep '\.so$' || true
@@ -127,13 +184,18 @@ build_linux() {
 
 build_macos() {
     local success_count=0 fail_count=0
-    print_header "Building renweb_example_plugin for macOS (arm64 + x86_64)"
+    print_header "Building my_renweb_plugin for macOS (arm64 + x86_64)"
     echo ""
 
     command_exists clang++ || { print_error "clang++ not found"; return 1; }
     local ncpu=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
     for arch in arm64 x86_64; do
+        if ! arch_matches "$arch"; then
+            print_info "Skipping $arch — not in arch filter"
+            echo ""
+            continue
+        fi
         print_building "$arch" "clang++ -arch $arch"
         make clear >/dev/null 2>&1 || true
         if ARCH="$arch" ARCH_FLAGS="-arch $arch" make TARGET=release -j$ncpu; then
@@ -162,7 +224,7 @@ build_macos() {
     fi
 
     print_header "Build Summary"
-    echo -e "$GREEN Successful: $BOLD$success_count$RESET  $RED Failed: $BOLD$fail_count$RESET"
+    echo "${GREEN}Successful: ${BOLD}${success_count}${RESET}  ${RED}Failed: ${BOLD}${fail_count}${RESET}"
     if [ $success_count -gt 0 ]; then
         print_info "Output: ./build/plugins/"
         ls -lh build/plugins/ 2>/dev/null | grep '\.dylib$' || true
@@ -171,7 +233,7 @@ build_macos() {
 
 build_windows() {
     local success_count=0 fail_count=0
-    print_header "Building renweb_example_plugin for Windows (x64 + x86 + arm64)"
+    print_header "Building my_renweb_plugin for Windows (x86_64 + x86_32 + arm64)"
     echo ""
 
     local vswhere="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
@@ -185,24 +247,28 @@ build_windows() {
     local vcvars_path="$vs_path/VC/Auxiliary/Build"
     [ -d "$vcvars_path" ] || { print_error "vcvars path not found: $vcvars_path"; return 1; }
 
-    for arch_spec in "x64:x86_64:vcvars64.bat" "x86:x86_32:vcvars32.bat" "arm64:arm64:vcvarsamd64_arm64.bat"; do
-        IFS=':' read -r win_arch make_arch vcvars <<< "$arch_spec"
-        print_building "$win_arch" "$vcvars"
+    for arch_spec in "x86_64:vcvars64.bat" "x86_32:vcvars32.bat" "arm64:vcvarsamd64_arm64.bat"; do
+        IFS=':' read -r make_arch vcvars <<< "$arch_spec"
+        if ! arch_matches "$make_arch"; then
+            print_info "Skipping $make_arch — not in arch filter"
+            echo ""
+            continue
+        fi
+        print_building "$make_arch" "$vcvars"
         local vcvars_win=$(cygpath -w "$vcvars_path/$vcvars" 2>/dev/null || echo "$vcvars_path\\$vcvars")
+        rm -rf src/.build
         local temp_bat=$(mktemp --suffix=.bat)
         cat > "$temp_bat" <<BATEOF
 @echo off
 call "$vcvars_win" >nul 2>&1
 if errorlevel 1 exit /b 1
-make clear ARCH=$make_arch TARGET=release >nul 2>&1
-if errorlevel 1 exit /b 1
 make ARCH=$make_arch TARGET=release -j4
 BATEOF
         if cmd //c "$(cygpath -w "$temp_bat" 2>/dev/null || echo "$temp_bat")" 2>&1; then
-            print_success "Built $win_arch"
+            print_success "Built $make_arch"
             success_count=$((success_count + 1))
         else
-            print_error "Failed $win_arch"
+            print_error "Failed $make_arch"
             fail_count=$((fail_count + 1))
         fi
         rm -f "$temp_bat"
@@ -210,7 +276,7 @@ BATEOF
     done
 
     print_header "Build Summary"
-    echo -e "$GREEN Successful: $BOLD$success_count$RESET  $RED Failed: $BOLD$fail_count$RESET"
+    echo "${GREEN}Successful: ${BOLD}${success_count}${RESET}  ${RED}Failed: ${BOLD}${fail_count}${RESET}"
     if [ $success_count -gt 0 ]; then
         print_info "Output: ./build/plugins/"
         ls -lh build/plugins/ 2>/dev/null | grep '\.dll$' || true
@@ -221,20 +287,29 @@ BATEOF
 }
 
 main() {
-    case "${1:-}" in
-        --help|-h)
-            echo "Usage: $0"
-            echo "Builds the renweb_example_plugin plugin for all architectures on the current OS."
-            echo "  Linux:   13 cross-compiled .so files (requires toolchains)"
-            echo "  macOS:   arm64 + x86_64 .dylib files + universal binary"
-            echo "  Windows: x64 + x86 + arm64 .dll files (requires VS 2022)"
-            exit 0 ;;
-        "") ;;
-        *) print_error "Unknown option: $1"; exit 1 ;;
-    esac
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --arch|-a)
+                if [ -z "${2:-}" ] || [ "${2#-}" != "$2" ]; then
+                    print_error "--arch requires an architecture name"; exit 1
+                fi
+                _fa=$(normalize_arch "$2")
+                FILTER_ARCHS="${FILTER_ARCHS:+$FILTER_ARCHS }$_fa"
+                shift 2 ;;
+            --help|-h)
+                echo "Usage: $0 [--arch <arch>]..."
+                echo "Builds the my_renweb_plugin plugin for all architectures on the current OS."
+                echo "  --arch <arch>  Only build for the specified architecture (repeatable)"
+                echo "  Linux:   13 cross-compiled .so files (requires toolchains)"
+                echo "  macOS:   arm64 + x86_64 .dylib files + universal binary"
+                echo "  Windows: x86_64 + x86_32 + arm64 .dll files (requires VS 2022)"
+                exit 0 ;;
+            *) print_error "Unknown option: $1"; exit 1 ;;
+        esac
+    done
 
     detect_os
-    print_header "renweb_example_plugin Plugin — Multi-Architecture Build"
+    print_header "my_renweb_plugin Plugin — Multi-Architecture Build"
     print_info "OS: $OS_NAME"
     echo ""
 

@@ -1,9 +1,9 @@
-// Compile Boost.JSON's implementation directly into this translation unit so
-// no external libboost_json is needed at runtime — the plugin is self-contained.
+// Compile Boost.JSON implementation in this TU so plugin builds
+// without requiring prebuilt Boost stage libraries.
 #define BOOST_JSON_SOURCE
 #include <boost/json/src.hpp>
 
-#include "../include/renweb_example_plugin.hpp"
+#include "../include/my_renweb_plugin.hpp"
 
 #include <cmath>      // std::tgamma
 #include <stdexcept>
@@ -19,25 +19,25 @@
 
 // ─── Constructor ─────────────────────────────────────────────────────────────
 
-RenWebExamplePlugin::RenWebExamplePlugin(std::shared_ptr<RenWeb::ILogger> logger)
+MyRenWebPlugin::MyRenWebPlugin(std::shared_ptr<RenWeb::ILogger> logger)
     : RenWeb::Plugin(
-        "RenWeb Example Plugin",
-        "renweb_example_plugin",
+        "My RenWeb Plugin",
+        "my_renweb_plugin",
         "0.0.1",
-        "An example plugin used for testing purposes.",
+        "A test plugin for RenWeb demonstrating basic functionality and usage.",
         "https://github.com/spur27/renweb-example-plugin",
         logger)
 {
-    logger->info("[renweb_example_plugin] Initializing plugin...");
+    logger->info("[my_renweb_plugin] Initializing plugin...");
     registerFunctions();
-    logger->info("[renweb_example_plugin] Plugin initialized successfully!");
+    logger->info("[my_renweb_plugin] Plugin initialized successfully!");
 }
 
 // ─── Functions ───────────────────────────────────────────────────────────────
 
-void RenWebExamplePlugin::registerFunctions() {
+void MyRenWebPlugin::registerFunctions() {
     // Square a number.
-    // JS: const result = await BIND_plugin_renweb_example_plugin_square(4);  // → 16
+    // JS: const result = await BIND_plugin_my_renweb_plugin_square(4);  // → 16
     functions["square"] = [this](const json::value& req) -> json::value {
         try {
             const json::value param = req.as_array()[0];
@@ -57,7 +57,7 @@ void RenWebExamplePlugin::registerFunctions() {
     };
 
     // Calculate factorial (uses tgamma; also accepts non-integer inputs).
-    // JS: const result = await BIND_plugin_renweb_example_plugin_factorial(5);  // → 120
+    // JS: const result = await BIND_plugin_my_renweb_plugin_factorial(5);  // → 120
     functions["factorial"] = [this](const json::value& req) -> json::value {
         try {
             const json::value param = req.as_array()[0];
@@ -76,7 +76,7 @@ void RenWebExamplePlugin::registerFunctions() {
     // Reverse a string.
     // Strings must be encoded with Utils.encode() on the JS side;
     // processInput() decodes the base64 representation automatically.
-    // JS: const result = await BIND_plugin_renweb_example_plugin_reverse_string(Utils.encode("Hello"));  // → "olleH"
+    // JS: const result = await BIND_plugin_my_renweb_plugin_reverse_string(Utils.encode("Hello"));  // → "olleH"
     functions["reverse_string"] = [this](const json::value& req) -> json::value {
         try {
             const json::value param = req.as_array()[0];
@@ -93,5 +93,9 @@ void RenWebExamplePlugin::registerFunctions() {
 // ─── Factory — keep this exact signature so RenWeb can load the plugin ────────
 
 extern "C" PLUGIN_EXPORT RenWeb::Plugin* createPlugin(std::shared_ptr<RenWeb::ILogger> logger) {
-    return new RenWebExamplePlugin(logger);
+    return new MyRenWebPlugin(logger);
+}
+
+extern "C" PLUGIN_EXPORT void destroyPlugin(RenWeb::Plugin* plugin) {
+    delete plugin;
 }

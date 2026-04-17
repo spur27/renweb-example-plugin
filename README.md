@@ -1,11 +1,11 @@
-# RenWeb Example Plugin
+# My RenWeb Plugin
 
-An example plugin used for testing purposes.
+A RenWeb plugin.
 
 ## Source layout
 
 ```
-renweb_example_plugin/
+my_renweb_plugin/
 ├── build/
 │   ├── renweb-<version>-<os>-<arch>  # downloaded engine executable
 │   ├── info.json                     # minimal launch config
@@ -13,11 +13,13 @@ renweb_example_plugin/
 │   ├── content/test/index.html       # plugin test harness page
 │   └── plugins/                      # compiled plugin output (per arch)
 ├── release/                          # output from build_for_release.sh
+├── external/
+│   └── boost-json/                   # pinned Boost.JSON submodule (boost-1.90.0)
 ├── include/
 │   ├── plugin.hpp          # RenWeb Plugin base class (fetched from engine)
-│   └── renweb_example_plugin.hpp   # Plugin class declaration
+│   └── my_renweb_plugin.hpp   # Plugin class declaration
 ├── src/
-│   └── renweb_example_plugin.cpp   # Plugin implementation (defines name + version)
+│   └── my_renweb_plugin.cpp   # Plugin implementation (defines name + version)
 ├── build_all_archs.sh      # Build for all OS/arch targets
 ├── build_for_release.sh    # Build all arches, collect binaries into release/
 └── makefile
@@ -25,9 +27,15 @@ renweb_example_plugin/
 
 ## Dependencies
 
-Requires a C++17-capable compiler and the **Boost** development headers  
-(Boost.JSON is compiled statically into the plugin via `#include <boost/json/src.hpp>` —
-no separate `libboost_json` needed at runtime).
+Requires a C++20-capable compiler and the **Boost** development headers  
+(Boost.JSON is compiled into the plugin via `BOOST_JSON_SOURCE`, so no
+prebuilt Boost libraries are required for plugin builds).
+
+This template pins the expected Boost ABI to **Boost 1.90.0**
+(`BOOST_VERSION=109000`) to avoid runtime crashes from mismatched C++ ABI.
+If you intentionally need another Boost version, override
+`REQUIRED_BOOST_VERSION` in the make invocation and ensure the RenWeb engine
+was compiled against the same version.
 
 | Platform | Command |
 |----------|---------|
@@ -54,6 +62,9 @@ make TOOLCHAIN=aarch64-linux-gnu
 
 # Windows (MinGW or MSVC Developer Prompt)
 make
+
+# Intentional override (only if engine uses the same Boost version)
+make REQUIRED_BOOST_VERSION=109000
 ```
 
 Output: `<internal_name>-<version>-<os>-<arch>.so` (or `.dll` / `.dylib`)
@@ -77,13 +88,13 @@ Copy the built library into your RenWeb project's `build/plugins/` directory.
 
 ```js
 // Square a number
-const sq = await BIND_plugin_renweb_example_plugin_square(7);   // → 49
+const sq = await BIND_plugin_my_renweb_plugin_square(7);   // → 49
 
 // Factorial
-const fact = await BIND_plugin_renweb_example_plugin_factorial(5);  // → 120
+const fact = await BIND_plugin_my_renweb_plugin_factorial(5);  // → 120
 
 // Reverse a string (strings must be encoded with Utils.encode)
-const rev = await BIND_plugin_renweb_example_plugin_reverse_string(Utils.encode("Hello"));  // → "olleH"
+const rev = await BIND_plugin_my_renweb_plugin_reverse_string(Utils.encode("Hello"));  // → "olleH"
 ```
 
 ## API

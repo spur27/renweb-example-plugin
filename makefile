@@ -1,5 +1,5 @@
 # =============================================================================
-# RenWeb Example Plugin — RenWeb Plugin Makefile
+# My RenWeb Plugin — RenWeb Plugin Makefile
 # =============================================================================
 # Usage:
 #   make                          Build for current OS/arch (debug)
@@ -72,6 +72,15 @@ ifndef TARGET
 endif
 
 # -----------------------------------------------------------------------------
+# Boost ABI pin
+# 109000 == Boost 1.90.0
+# Override only if the engine was built against the same Boost version.
+# -----------------------------------------------------------------------------
+ifndef REQUIRED_BOOST_VERSION
+	REQUIRED_BOOST_VERSION := 109000
+endif
+
+# -----------------------------------------------------------------------------
 # OS / compiler / architecture detection
 # -----------------------------------------------------------------------------
 ifeq ($(OS),Windows_NT)
@@ -80,20 +89,24 @@ ifeq ($(OS),Windows_NT)
 	SHARED_EXT := .dll
 	OBJ_EXT    := .obj
 	OBJ_DIR    := src\\.build
+	_NON_COMPILE_GOALS := clean clear info help
+	_COMPILE_GOALS_REQ := $(filter-out $(_NON_COMPILE_GOALS), $(if $(MAKECMDGOALS),$(MAKECMDGOALS),all))
+	_SHELL_INIT        := $(shell :)
 	ifeq ($(RENWEB_VS_BOOTSTRAPPED),)
 	CL_IN_PATH := $(shell which cl 2>/dev/null)
 	ifeq ($(CL_IN_PATH),)
+	ifneq ($(_COMPILE_GOALS_REQ),)
 	NEED_VS_BOOTSTRAP := 1
 	endif
 	endif
+	endif
 	CXX      := cl
-	CXXFLAGS := /std:c++17 /utf-8 /EHsc /W3 /FS /nologo
 	ifeq ($(TARGET),debug)
-		CXXFLAGS += /Zi /Od /MTd
+		CXXFLAGS := /std:c++20 /utf-8 /EHsc /W3 /FS /nologo /Od /MTd /Zi /DBOOST_ALL_NO_LIB /DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
 		LDFLAGS  := /DEBUG
 	else
-		CXXFLAGS += /O2 /GL /GS- /Gy /MT
-		LDFLAGS  := /LTCG /OPT:REF /OPT:ICF
+		CXXFLAGS := /std:c++20 /utf-8 /EHsc /W3 /FS /nologo /O2 /GS- /Gy /MT /DBOOST_ALL_NO_LIB /DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
+		LDFLAGS  := /OPT:REF /OPT:ICF
 	endif
 	ifdef VSCMD_ARG_TGT_ARCH
 		ifeq ($(VSCMD_ARG_TGT_ARCH),x64)
@@ -109,9 +122,73 @@ ifeq ($(OS),Windows_NT)
 			ARCH    := x86_64
 			LDFLAGS += /MACHINE:X64
 		endif
-	else ifndef ARCH
-		ARCH    := x86_64
-		LDFLAGS += /MACHINE:X64
+	else
+		ifndef ARCH
+			ARCH := x86_64
+		endif
+		ifeq ($(ARCH),x86_32)
+			LDFLAGS += /MACHINE:X86
+		else ifeq ($(ARCH),arm64)
+			LDFLAGS += /MACHINE:ARM64
+		else
+			LDFLAGS += /MACHINE:X64
+		endif
+	endif
+    # ---- Boost header detection (headers only) ----
+    # JSON headers (boost/json/*): prefer project-local external/boost-json/include
+    # Core headers (boost/config.hpp etc.): prefer engine external/boost, then vcpkg/C:/boost
+    # This allows lightweight boost-json submodule while still resolving transitive
+    # Boost dependencies required by boost/json/src.hpp.
+	# The compile-time version check in source enforces REQUIRED_BOOST_VERSION.
+	ifndef RENWEB_ENGINE_PATH
+		RENWEB_ENGINE_PATH := ../RenWeb-Engine
+	endif
+	ifeq ($(ARCH),x86_32)
+		_VCPKG_ARCH := x86-windows
+	else ifeq ($(ARCH),arm64)
+		_VCPKG_ARCH := arm64-windows
+	else
+		_VCPKG_ARCH := x64-windows
+	endif
+    ifneq ($(wildcard external/boost-json/include/boost/json/src.hpp),)
+        BOOST_JSON_INC := /Iexternal/boost-json/include
+    endif
+    ifneq ($(wildcard $(RENWEB_ENGINE_PATH)/external/boost/boost/config.hpp),)
+        BOOST_CORE_INC := /I$(RENWEB_ENGINE_PATH)/external/boost
+    endif
+    ifeq ($(BOOST_CORE_INC),)
+		ifneq ($(VCPKG_ROOT),)
+			_VR := $(subst \\,/,$(VCPKG_ROOT))
+			ifneq ($(wildcard $(_VR)/installed/$(_VCPKG_ARCH)-static/include/boost),)
+                BOOST_CORE_INC := /I$(_VR)/installed/$(_VCPKG_ARCH)-static/include
+			else ifneq ($(wildcard $(_VR)/installed/$(_VCPKG_ARCH)/include/boost),)
+                BOOST_CORE_INC := /I$(_VR)/installed/$(_VCPKG_ARCH)/include
+			endif
+		endif
+	endif
+    ifeq ($(BOOST_CORE_INC),)
+		ifneq ($(wildcard C:/vcpkg/installed/$(_VCPKG_ARCH)-static/include/boost),)
+            BOOST_CORE_INC := /IC:/vcpkg/installed/$(_VCPKG_ARCH)-static/include
+		else ifneq ($(wildcard C:/vcpkg/installed/$(_VCPKG_ARCH)/include/boost),)
+            BOOST_CORE_INC := /IC:/vcpkg/installed/$(_VCPKG_ARCH)/include
+		else ifneq ($(wildcard C:/boost/include/boost),)
+            BOOST_CORE_INC := /IC:/boost/include
+		else ifneq ($(wildcard C:/boost/boost),)
+            BOOST_CORE_INC := /IC:/boost
+		else
+			_BOOST_LOCAL_DIR := $(firstword $(wildcard C:/local/boost_*/boost))
+			ifneq ($(_BOOST_LOCAL_DIR),)
+                BOOST_CORE_INC := /I$(patsubst %/boost,%,$(_BOOST_LOCAL_DIR))
+			endif
+		endif
+	endif
+    ifneq ($(BOOST_JSON_INC),)
+        CXXFLAGS += $(BOOST_JSON_INC)
+    endif
+    ifneq ($(BOOST_CORE_INC),)
+        CXXFLAGS += $(BOOST_CORE_INC)
+	else
+$(warning [RenWeb] Core Boost headers not found. Install via: vcpkg install boost-json or provide C:/boost / RENWEB_ENGINE_PATH.)
 	endif
 else
 	SHELL   := /bin/sh
@@ -125,11 +202,7 @@ else
 		CXX          := clang++
 		CXXFLAGS     := -std=c++17 -MMD -MP -fPIC -mmacosx-version-min=10.15
 		LDFLAGS      := -mmacosx-version-min=10.15
-		ifeq ($(TARGET),debug)
-			CXXFLAGS += -g -O0 -Wall -Wextra -Wno-missing-braces
-		else
-			CXXFLAGS += -O3 -flto
-		endif
+		CXXFLAGS += -O3 -flto -DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
 		ifdef ARCH_FLAGS
 			CXXFLAGS += $(ARCH_FLAGS)
 			LDFLAGS  += $(ARCH_FLAGS)
@@ -142,17 +215,17 @@ else
 				ARCH := x86_64
 			endif
 		endif
+		BREW_BOOST := $(shell brew --prefix boost 2>/dev/null)
+		ifdef BREW_BOOST
+			CXXFLAGS += -isystem $(BREW_BOOST)/include
+		endif
 	else
 		OS_NAME      := linux
 		SHARED_EXT   := .so
 		SHARED_FLAGS := -shared
 		CXX          := $(CROSS_COMPILE)g++
-		CXXFLAGS     := -std=c++17 -MMD -MP -fPIC -D_GNU_SOURCE
-		ifeq ($(TARGET),debug)
-			CXXFLAGS += $(SYSROOT) -g -O0 -Wall -Wextra -Wno-missing-braces
-		else
-			CXXFLAGS += $(SYSROOT) -O3 -flto
-		endif
+		CXXFLAGS     := -std=c++20 -MMD -MP -fPIC -D_GNU_SOURCE
+		CXXFLAGS += $(SYSROOT) -O3 -flto -DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
 		ifdef TOOLCHAIN
 			CXXFLAGS += -isystem /usr/$(TOOLCHAIN)/usr/local/include
 			LDFLAGS  := --sysroot=/usr/$(TOOLCHAIN) -L/lib -L/lib64 -L/usr/lib -L/usr/lib64
@@ -202,8 +275,8 @@ endef
 # in src/*.cpp: the 2nd string param is internal_name; the 3rd is version.
 # -----------------------------------------------------------------------------
 BUILD_DIR      := build/plugins
-SRC            := src/renweb_example_plugin.cpp
-OBJ            := $(OBJ_DIR)/renweb_example_plugin$(OBJ_EXT)
+SRC            := src/my_renweb_plugin.cpp
+OBJ            := $(OBJ_DIR)/my_renweb_plugin$(OBJ_EXT)
 PLUGIN_NAME    := $(shell grep -hE -A5 ': (RenWeb::)?Plugin\b' src/*.cpp 2>/dev/null | grep -o '"[^"]*"' | sed -n '2p' | tr -d '"' | xargs)
 PLUGIN_VERSION := $(shell grep -hE -A5 ': (RenWeb::)?Plugin\b' src/*.cpp 2>/dev/null | grep -o '"[^"]*"' | sed -n '3p' | tr -d '"' | xargs)
 OUT            := $(BUILD_DIR)/$(PLUGIN_NAME)-$(PLUGIN_VERSION)-$(OS_NAME)-$(ARCH)$(SHARED_EXT)
@@ -275,7 +348,7 @@ all: $(OUT)
 ifeq ($(OS_NAME),windows)
 $(OUT): $(OBJ) | $(BUILD_DIR)
 	$(call step,Linking,$(PLUGIN_NAME))
-	$(CXX) $(OBJ) /LD /Fe:$(OUT) /link $(LDFLAGS)
+	$(CXX) $(OBJ) /LD /Fe:$(OUT) /link $(LDFLAGS) /IMPLIB:$(OBJ_DIR)/$(PLUGIN_NAME).lib /PDB:$(OBJ_DIR)/$(PLUGIN_NAME).pdb
 else
 $(OUT): $(OBJ) | $(BUILD_DIR)
 	$(call step,Linking,$(PLUGIN_NAME))
@@ -284,25 +357,25 @@ endif
 
 $(BUILD_DIR):
 ifeq ($(OS_NAME),windows)
-	mkdir "$(BUILD_DIR)" 2>nul || exit 0
+	mkdir "$(BUILD_DIR)" 2>/dev/null || exit 0
 else
 	mkdir -p $(BUILD_DIR)
 endif
 
 # ── Compile ───────────────────────────────────────────────────────────────────
 ifeq ($(OS_NAME),windows)
-$(OBJ): $(SRC) include/renweb_example_plugin.hpp include/plugin.hpp | $(OBJ_DIR)
+$(OBJ): $(SRC) include/my_renweb_plugin.hpp include/plugin.hpp | $(OBJ_DIR)
 	$(call step,Compiling,$<)
-	$(CXX) $(CXXFLAGS) /I include/ /c $(SRC) /Fo$@
+	$(CXX) $(CXXFLAGS) /Fd$(subst \\,/,$(OBJ_DIR))/ /I include/ /c $(SRC) /Fo$@
 else
-$(OBJ): $(SRC) include/renweb_example_plugin.hpp include/plugin.hpp | $(OBJ_DIR)
+$(OBJ): $(SRC) include/my_renweb_plugin.hpp include/plugin.hpp | $(OBJ_DIR)
 	$(call step,Compiling,$<)
 	$(CXX) $(CXXFLAGS) -I include/ -c $< -o $@
 endif
 
 $(OBJ_DIR):
 ifeq ($(OS_NAME),windows)
-	mkdir "$@" 2>nul || exit 0
+	mkdir "$@" 2>/dev/null || exit 0
 else
 	mkdir -p $@
 endif
@@ -310,20 +383,11 @@ endif
 # ── Utility ───────────────────────────────────────────────────────────────────
 clear:
 	$(call step,Clearing,object files)
-ifeq ($(OS_NAME),windows)
-	-rmdir /s /q "$(OBJ_DIR)" 2>nul
-else
 	rm -rf $(OBJ_DIR)
-endif
 
 clean:
 	$(call step,Cleaning,all build outputs)
-ifeq ($(OS_NAME),windows)
-	-rmdir /s /q "$(OBJ_DIR)" 2>nul
-	-rmdir /s /q "$(BUILD_DIR)" 2>nul
-else
 	rm -rf $(OBJ_DIR) $(BUILD_DIR)
-endif
 
 info:
 	$(call describe,Plugin,$(PLUGIN_NAME),Version,$(PLUGIN_VERSION))
