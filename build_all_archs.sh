@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build_all_archs.sh — build my_renweb_plugin plugin for all supported architectures
+# build_all_archs.sh — build plugin for all supported architectures
 #
 # Usage:
 #   ./build_all_archs.sh [--arch <arch>] ...
@@ -19,6 +19,11 @@ CYAN=$(printf '\033[36m')
 BOLD=$(printf '\033[1m')
 
 LINUX_TOOLCHAINS="x86_64-linux-gnu i686-linux-gnu aarch64-linux-gnu arm-linux-gnueabihf mips-linux-gnu mipsel-linux-gnu mips64-linux-gnuabi64 mips64el-linux-gnuabi64 powerpc-linux-gnu powerpc64-linux-gnu riscv64-linux-gnu s390x-linux-gnu sparc64-linux-gnu"
+
+PLUGIN_NAME_DISPLAY=$(grep -hE -A5 ': (RenWeb::)?Plugin\b' src/*.cpp 2>/dev/null | grep -o '"[^"]*"' | sed -n '2p' | tr -d '"' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if [ -z "$PLUGIN_NAME_DISPLAY" ]; then
+    PLUGIN_NAME_DISPLAY=$(basename "$PWD")
+fi
 
 print_header()  { echo "${CYAN}${BOLD}========================================${RESET}"; echo "${CYAN}${BOLD}$1${RESET}"; echo "${CYAN}${BOLD}========================================${RESET}"; }
 print_info()    { echo "${GREEN}${BOLD}[INFO]${RESET} $1"; }
@@ -112,7 +117,7 @@ detect_os() {
 
 build_linux() {
     local success_count=0 fail_count=0 total_count=0
-    print_header "Building my_renweb_plugin for Linux (13 architectures)"
+    print_header "Building ${PLUGIN_NAME_DISPLAY} for Linux (13 architectures)"
     print_info "Host: $HOST_ARCH"
     echo ""
 
@@ -184,7 +189,7 @@ build_linux() {
 
 build_macos() {
     local success_count=0 fail_count=0
-    print_header "Building my_renweb_plugin for macOS (arm64 + x86_64)"
+    print_header "Building ${PLUGIN_NAME_DISPLAY} for macOS (arm64 + x86_64)"
     echo ""
 
     command_exists clang++ || { print_error "clang++ not found"; return 1; }
@@ -233,7 +238,7 @@ build_macos() {
 
 build_windows() {
     local success_count=0 fail_count=0
-    print_header "Building my_renweb_plugin for Windows (x86_64 + x86_32 + arm64)"
+    print_header "Building ${PLUGIN_NAME_DISPLAY} for Windows (x86_64 + x86_32 + arm64)"
     echo ""
 
     local vswhere="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
@@ -298,7 +303,7 @@ main() {
                 shift 2 ;;
             --help|-h)
                 echo "Usage: $0 [--arch <arch>]..."
-                echo "Builds the my_renweb_plugin plugin for all architectures on the current OS."
+                echo "Builds the ${PLUGIN_NAME_DISPLAY} plugin for all architectures on the current OS."
                 echo "  --arch <arch>  Only build for the specified architecture (repeatable)"
                 echo "  Linux:   13 cross-compiled .so files (requires toolchains)"
                 echo "  macOS:   arm64 + x86_64 .dylib files + universal binary"
@@ -309,7 +314,7 @@ main() {
     done
 
     detect_os
-    print_header "my_renweb_plugin Plugin — Multi-Architecture Build"
+    print_header "${PLUGIN_NAME_DISPLAY} Plugin — Multi-Architecture Build"
     print_info "OS: $OS_NAME"
     echo ""
 

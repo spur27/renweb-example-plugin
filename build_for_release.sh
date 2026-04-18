@@ -37,6 +37,10 @@ normalize_arch() {
 
 RELEASE_DIR="./release"
 PLUGINS_DIR="./build/plugins"
+PLUGIN_NAME_DISPLAY=$(grep -hE -A5 ': (RenWeb::)?Plugin\b' src/*.cpp 2>/dev/null | grep -o '"[^"]*"' | sed -n '2p' | tr -d '"' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if [ -z "$PLUGIN_NAME_DISPLAY" ]; then
+    PLUGIN_NAME_DISPLAY=$(basename "$PWD")
+fi
 
 print_header()  { echo "${CYAN}${BOLD}========================================${RESET}"; echo "${CYAN}${BOLD}$1${RESET}"; echo "${CYAN}${BOLD}========================================${RESET}"; }
 print_info()    { echo "${GREEN}${BOLD}[INFO]${RESET} $1"; }
@@ -69,16 +73,16 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-print_header "Cleaning release directory"
+print_header "${PLUGIN_NAME_DISPLAY} — Cleaning release directory"
 rm -rf "$RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
 print_info "Ready: $RELEASE_DIR/"
 
-print_header "Building all architectures"
+print_header "${PLUGIN_NAME_DISPLAY} — Building all architectures"
 # shellcheck disable=SC2086
 bash ./build_all_archs.sh $ARCH_FLAGS
 
-print_header "Collecting plugins"
+print_header "${PLUGIN_NAME_DISPLAY} — Collecting plugins"
 plugin_count=0
 if [ -d "$PLUGINS_DIR" ]; then
     for f in "$PLUGINS_DIR"/*; do

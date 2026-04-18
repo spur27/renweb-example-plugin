@@ -3,7 +3,7 @@
 #define BOOST_JSON_SOURCE
 #include <boost/json/src.hpp>
 
-#include "../include/my_renweb_plugin.hpp"
+#include "../include/renweb_example_plugin.hpp"
 
 #include <cmath>      // std::tgamma
 #include <stdexcept>
@@ -19,25 +19,25 @@
 
 // ─── Constructor ─────────────────────────────────────────────────────────────
 
-MyRenWebPlugin::MyRenWebPlugin(std::shared_ptr<RenWeb::ILogger> logger)
+RenWebExamplePlugin::RenWebExamplePlugin(std::shared_ptr<RenWeb::ILogger> logger)
     : RenWeb::Plugin(
-        "My RenWeb Plugin",
-        "my_renweb_plugin",
+        "RenWeb Example Plugin",
+        "renweb_example_plugin",
         "0.0.1",
-        "",
-        "",
+        "An example plugin used for testing purposes",
+        "https://github.com/spur27/renweb-example-plugin",
         logger)
 {
-    logger->info("[my_renweb_plugin] Initializing plugin...");
+    logger->info("[renweb_example_plugin] Initializing plugin...");
     registerFunctions();
-    logger->info("[my_renweb_plugin] Plugin initialized successfully!");
+    logger->info("[renweb_example_plugin] Plugin initialized successfully!");
 }
 
 // ─── Functions ───────────────────────────────────────────────────────────────
 
-void MyRenWebPlugin::registerFunctions() {
+void RenWebExamplePlugin::registerFunctions() {
     // Square a number.
-    // JS: const result = await BIND_plugin_my_renweb_plugin_square(4);  // → 16
+    // JS: const result = await BIND_plugin_renweb_example_plugin_square(4);  // → 16
     functions["square"] = [this](const json::value& req) -> json::value {
         try {
             const json::value param = req.as_array()[0];
@@ -93,7 +93,7 @@ void MyRenWebPlugin::registerFunctions() {
 // ─── Factory — keep this exact signature so RenWeb can load the plugin ────────
 
 extern "C" PLUGIN_EXPORT RenWeb::Plugin* createPlugin(std::shared_ptr<RenWeb::ILogger> logger) {
-    return new MyRenWebPlugin(logger);
+    return new RenWebExamplePlugin(logger);
 }
 
 extern "C" PLUGIN_EXPORT void destroyPlugin(RenWeb::Plugin* plugin) {

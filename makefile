@@ -186,11 +186,16 @@ endef
 # in src/*.cpp: the 2nd string param is internal_name; the 3rd is version.
 # -----------------------------------------------------------------------------
 BUILD_DIR      := build/plugins
-SRC            := src/my_renweb_plugin.cpp
-OBJ            := $(OBJ_DIR)/my_renweb_plugin$(OBJ_EXT)
+SRC            := $(sort $(wildcard src/*.cpp))
+OBJ            := $(patsubst src/%.cpp,$(OBJ_DIR)/%$(OBJ_EXT),$(SRC))
+HEADERS        := $(sort $(wildcard include/*.hpp))
 PLUGIN_NAME    := $(shell grep -hE -A5 ': (RenWeb::)?Plugin\b' src/*.cpp 2>/dev/null | grep -o '"[^"]*"' | sed -n '2p' | tr -d '"' | xargs)
 PLUGIN_VERSION := $(shell grep -hE -A5 ': (RenWeb::)?Plugin\b' src/*.cpp 2>/dev/null | grep -o '"[^"]*"' | sed -n '3p' | tr -d '"' | xargs)
 OUT            := $(BUILD_DIR)/$(PLUGIN_NAME)-$(PLUGIN_VERSION)-$(OS_NAME)-$(ARCH)$(SHARED_EXT)
+
+ifeq ($(strip $(SRC)),)
+$(error No C++ source files found in src/*.cpp)
+endif
 
 # =============================================================================
 # VS auto-bootstrap (Windows only: runs when cl.exe is absent from PATH)
@@ -275,11 +280,11 @@ endif
 
 # ── Compile ───────────────────────────────────────────────────────────────────
 ifeq ($(OS_NAME),windows)
-$(OBJ): $(SRC) include/my_renweb_plugin.hpp include/plugin.hpp | $(OBJ_DIR)
+$(OBJ_DIR)/%$(OBJ_EXT): src/%.cpp $(HEADERS) | $(OBJ_DIR)
 	$(call step,Compiling,$<)
-	$(CXX) $(CXXFLAGS) /Fd$(subst \\,/,$(OBJ_DIR))/ /I include/ /c $(SRC) /Fo$@
+	$(CXX) $(CXXFLAGS) /Fd$(subst \\,/,$(OBJ_DIR))/ /I include/ /c $< /Fo$@
 else
-$(OBJ): $(SRC) include/my_renweb_plugin.hpp include/plugin.hpp | $(OBJ_DIR)
+$(OBJ_DIR)/%$(OBJ_EXT): src/%.cpp $(HEADERS) | $(OBJ_DIR)
 	$(call step,Compiling,$<)
 	$(CXX) $(CXXFLAGS) -I include/ -c $< -o $@
 endif
