@@ -12,26 +12,20 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
-    steps:
-      - uses: actions/checkout@v4
+        steps:
+            - uses: actions/checkout@v4
+                with:
+                    submodules: true
 
-      - name: Install Boost headers (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get install -y libboost-dev
-
-      - name: Install Boost headers (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install boost
-          echo "CPATH=$(brew --prefix boost)/include:$CPATH" >> "$GITHUB_ENV"
-
-      - name: Install Boost headers (Windows)
-        if: runner.os == 'Windows'
-        shell: bash
-        run: |
-          vcpkg install boost-json:x64-windows
-          mkdir -p include
-          cp -r "C:/vcpkg/installed/x64-windows/include/boost" include/
+            - name: Initialize required Boost modules
+                shell: bash
+                run: |
+                    git -C external/boost submodule update --init --depth 1 \
+                        libs/json libs/assert libs/config libs/container libs/container_hash \
+                        libs/core libs/describe libs/endian libs/mp11 libs/predef \
+                        libs/preprocessor libs/static_assert libs/system \
+                        libs/throw_exception libs/type_traits libs/variant2 libs/winapi \
+                        libs/move libs/intrusive libs/compat
 
       - name: Build (Linux/macOS)
         if: runner.os != 'Windows'

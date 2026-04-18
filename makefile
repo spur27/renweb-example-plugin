@@ -27,58 +27,7 @@
 #   riscv64-linux-gnu     s390x-linux-gnu     sparc64-linux-gnu
 # -----------------------------------------------------------------------------
 TOOLCHAIN :=
-ifdef TOOLCHAIN
-	CROSS_COMPILE := $(TOOLCHAIN)-
-	SYSROOT       := --sysroot=/usr/$(TOOLCHAIN)
-	ifeq ($(TOOLCHAIN),arm-linux-gnueabihf)
-		ARCH := arm32
-	else ifeq ($(TOOLCHAIN),aarch64-linux-gnu)
-		ARCH := arm64
-	else ifeq ($(TOOLCHAIN),i686-linux-gnu)
-		ARCH := x86_32
-	else ifeq ($(TOOLCHAIN),mips-linux-gnu)
-		ARCH := mips32
-	else ifeq ($(TOOLCHAIN),mipsel-linux-gnu)
-		ARCH := mips32el
-	else ifeq ($(TOOLCHAIN),mips64-linux-gnuabi64)
-		ARCH := mips64
-	else ifeq ($(TOOLCHAIN),mips64el-linux-gnuabi64)
-		ARCH := mips64el
-	else ifeq ($(TOOLCHAIN),powerpc-linux-gnu)
-		ARCH := powerpc32
-	else ifeq ($(TOOLCHAIN),powerpc64-linux-gnu)
-		ARCH := powerpc64
-	else ifeq ($(TOOLCHAIN),riscv64-linux-gnu)
-		ARCH := riscv64
-	else ifeq ($(TOOLCHAIN),s390x-linux-gnu)
-		ARCH := s390x
-	else ifeq ($(TOOLCHAIN),sparc64-linux-gnu)
-		ARCH := sparc64
-	else ifeq ($(TOOLCHAIN),x86_64-linux-gnu)
-		ARCH := x86_64
-	else
-		ARCH := unknown
-	endif
-else
-	CROSS_COMPILE :=
-	SYSROOT       :=
-endif
-
-# -----------------------------------------------------------------------------
-# Build target
-# -----------------------------------------------------------------------------
-ifndef TARGET
-	TARGET := debug
-endif
-
-# -----------------------------------------------------------------------------
-# Boost ABI pin
-# 109000 == Boost 1.90.0
-# Override only if the engine was built against the same Boost version.
-# -----------------------------------------------------------------------------
-ifndef REQUIRED_BOOST_VERSION
-	REQUIRED_BOOST_VERSION := 109000
-endif
+REQUIRED_BOOST_VERSION := 109000
 
 # -----------------------------------------------------------------------------
 # OS / compiler / architecture detection
@@ -102,7 +51,7 @@ ifeq ($(OS),Windows_NT)
 	endif
 	CXX      := cl
 	ifeq ($(TARGET),debug)
-		CXXFLAGS := /std:c++20 /utf-8 /EHsc /W3 /FS /nologo /Od /MTd /Zi /DBOOST_ALL_NO_LIB /DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
+        CXXFLAGS := /std:c++20 /utf-8 /EHsc /W3 /FS /nologo /Od /MT /Zi /DBOOST_ALL_NO_LIB /DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
 		LDFLAGS  := /DEBUG
 	else
 		CXXFLAGS := /std:c++20 /utf-8 /EHsc /W3 /FS /nologo /O2 /GS- /Gy /MT /DBOOST_ALL_NO_LIB /DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
@@ -134,61 +83,23 @@ ifeq ($(OS),Windows_NT)
 			LDFLAGS += /MACHINE:X64
 		endif
 	endif
-    # ---- Boost header detection (headers only) ----
-    # JSON headers (boost/json/*): prefer project-local external/boost-json/include
-    # Core headers (boost/config.hpp etc.): prefer engine external/boost, then vcpkg/C:/boost
-    # This allows lightweight boost-json submodule while still resolving transitive
-    # Boost dependencies required by boost/json/src.hpp.
-	# The compile-time version check in source enforces REQUIRED_BOOST_VERSION.
-	ifndef RENWEB_ENGINE_PATH
-		RENWEB_ENGINE_PATH := ../RenWeb-Engine
-	endif
-	ifeq ($(ARCH),x86_32)
-		_VCPKG_ARCH := x86-windows
-	else ifeq ($(ARCH),arm64)
-		_VCPKG_ARCH := arm64-windows
-	else
-		_VCPKG_ARCH := x64-windows
-	endif
-    ifneq ($(wildcard external/boost-json/include/boost/json/src.hpp),)
-        BOOST_JSON_INC := /Iexternal/boost-json/include
+    # ---- Boost header detection (external-only) ----
+    # Plugins use boostorg/boost as a single source of truth.
+    ifneq ($(wildcard external/boost/libs/json/include/boost/json/src.hpp),)
+        BOOST_JSON_INC := /Iexternal/boost/libs/json/include
     endif
-    ifneq ($(wildcard $(RENWEB_ENGINE_PATH)/external/boost/boost/config.hpp),)
-        BOOST_CORE_INC := /I$(RENWEB_ENGINE_PATH)/external/boost
+    ifneq ($(wildcard external/boost/libs/config/include/boost/config.hpp),)
+        BOOST_TRANSITIVE_INCS := $(foreach d,$(wildcard external/boost/libs/*/include),/I$(d))
     endif
-    ifeq ($(BOOST_CORE_INC),)
-		ifneq ($(VCPKG_ROOT),)
-			_VR := $(subst \\,/,$(VCPKG_ROOT))
-			ifneq ($(wildcard $(_VR)/installed/$(_VCPKG_ARCH)-static/include/boost),)
-                BOOST_CORE_INC := /I$(_VR)/installed/$(_VCPKG_ARCH)-static/include
-			else ifneq ($(wildcard $(_VR)/installed/$(_VCPKG_ARCH)/include/boost),)
-                BOOST_CORE_INC := /I$(_VR)/installed/$(_VCPKG_ARCH)/include
-			endif
-		endif
-	endif
-    ifeq ($(BOOST_CORE_INC),)
-		ifneq ($(wildcard C:/vcpkg/installed/$(_VCPKG_ARCH)-static/include/boost),)
-            BOOST_CORE_INC := /IC:/vcpkg/installed/$(_VCPKG_ARCH)-static/include
-		else ifneq ($(wildcard C:/vcpkg/installed/$(_VCPKG_ARCH)/include/boost),)
-            BOOST_CORE_INC := /IC:/vcpkg/installed/$(_VCPKG_ARCH)/include
-		else ifneq ($(wildcard C:/boost/include/boost),)
-            BOOST_CORE_INC := /IC:/boost/include
-		else ifneq ($(wildcard C:/boost/boost),)
-            BOOST_CORE_INC := /IC:/boost
-		else
-			_BOOST_LOCAL_DIR := $(firstword $(wildcard C:/local/boost_*/boost))
-			ifneq ($(_BOOST_LOCAL_DIR),)
-                BOOST_CORE_INC := /I$(patsubst %/boost,%,$(_BOOST_LOCAL_DIR))
-			endif
-		endif
-	endif
     ifneq ($(BOOST_JSON_INC),)
         CXXFLAGS += $(BOOST_JSON_INC)
-    endif
-    ifneq ($(BOOST_CORE_INC),)
-        CXXFLAGS += $(BOOST_CORE_INC)
-	else
-$(warning [RenWeb] Core Boost headers not found. Install via: vcpkg install boost-json or provide C:/boost / RENWEB_ENGINE_PATH.)
+        ifneq ($(BOOST_TRANSITIVE_INCS),)
+            CXXFLAGS += $(BOOST_TRANSITIVE_INCS)
+        else
+$(warning [RenWeb] Boost transitive headers not found in external/boost/libs/*/include. Initialize required external/boost submodules.)
+        endif
+    else
+$(warning [RenWeb] Boost.JSON headers not found in external/boost/libs/json/include.)
 	endif
 else
 	SHELL   := /bin/sh

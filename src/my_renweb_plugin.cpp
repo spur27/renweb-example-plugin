@@ -24,8 +24,8 @@ MyRenWebPlugin::MyRenWebPlugin(std::shared_ptr<RenWeb::ILogger> logger)
         "My RenWeb Plugin",
         "my_renweb_plugin",
         "0.0.1",
-        "A test plugin for RenWeb demonstrating basic functionality and usage.",
-        "https://github.com/spur27/renweb-example-plugin",
+        "",
+        "",
         logger)
 {
     logger->info("[my_renweb_plugin] Initializing plugin...");

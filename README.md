@@ -14,7 +14,7 @@ my_renweb_plugin/
 │   └── plugins/                      # compiled plugin output (per arch)
 ├── release/                          # output from build_for_release.sh
 ├── external/
-│   └── boost-json/                   # pinned Boost.JSON submodule (boost-1.90.0)
+│   └── boost/                        # pinned Boost submodule (boost-1.90.0)
 ├── include/
 │   ├── plugin.hpp          # RenWeb Plugin base class (fetched from engine)
 │   └── my_renweb_plugin.hpp   # Plugin class declaration
@@ -27,9 +27,11 @@ my_renweb_plugin/
 
 ## Dependencies
 
-Requires a C++20-capable compiler and the **Boost** development headers  
-(Boost.JSON is compiled into the plugin via `BOOST_JSON_SOURCE`, so no
-prebuilt Boost libraries are required for plugin builds).
+Requires a C++20-capable compiler. This template vendors required Boost headers
+as pinned git submodules under `external/`.
+
+Boost.JSON is compiled into the plugin via `BOOST_JSON_SOURCE`, so no prebuilt
+Boost libraries are required for plugin builds.
 
 This template pins the expected Boost ABI to **Boost 1.90.0**
 (`BOOST_VERSION=109000`) to avoid runtime crashes from mismatched C++ ABI.
@@ -39,14 +41,7 @@ was compiled against the same version.
 
 | Platform | Command |
 |----------|---------|
-| **Ubuntu / Debian** | `sudo apt install libboost-dev` |
-| **Fedora / RHEL** | `sudo dnf install boost-devel` |
-| **Arch Linux** | `sudo pacman -S boost` |
-| **openSUSE** | `sudo zypper install boost-devel` |
-| **Alpine Linux** | `apk add boost-dev` |
-| **macOS (Homebrew)** | `brew install boost` |
-| **Windows (vcpkg)** | `vcpkg install boost-json:x64-windows` then add the vcpkg include path |
-| **Windows (manual)** | Download from [boost.org](https://www.boost.org/users/download/) and add the extracted folder to `CPATH` or your IDE include paths |
+| **All platforms** | `git -C external/boost submodule update --init --depth 1 libs/json libs/assert libs/config libs/container libs/container_hash libs/core libs/describe libs/endian libs/mp11 libs/predef libs/preprocessor libs/static_assert libs/system libs/throw_exception libs/type_traits libs/variant2 libs/winapi libs/move libs/intrusive libs/compat` |
 
 ## Building
 
