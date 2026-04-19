@@ -115,7 +115,7 @@ else
 		SHARED_EXT   := .dylib
 		SHARED_FLAGS := -dynamiclib
 		CXX          := clang++
-		CXXFLAGS     := -std=c++17 -MMD -MP -fPIC -mmacosx-version-min=10.15
+		CXXFLAGS     := -std=c++20 -MMD -MP -fPIC -mmacosx-version-min=10.15
 		LDFLAGS      := -mmacosx-version-min=10.15
 		CXXFLAGS += -O3 -flto -DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
 		ifdef ARCH_FLAGS
@@ -133,6 +133,17 @@ else
 		BREW_BOOST := $(shell brew --prefix boost 2>/dev/null)
 		ifdef BREW_BOOST
 			CXXFLAGS += -isystem $(BREW_BOOST)/include
+		endif
+		ifneq ($(wildcard external/boost/libs/json/include/boost/json/src.hpp),)
+			CXXFLAGS += -isystem external/boost/libs/json/include
+			BOOST_TRANSITIVE_DIRS := $(wildcard external/boost/libs/*/include)
+			ifneq ($(BOOST_TRANSITIVE_DIRS),)
+				CXXFLAGS += $(foreach d,$(BOOST_TRANSITIVE_DIRS),-isystem $(d))
+			else
+$(warning [RenWeb] Boost transitive headers not found in external/boost/libs/*/include. Initialize required external/boost submodules.)
+			endif
+		else
+$(warning [RenWeb] Boost.JSON headers not found in external/boost/libs/json/include.)
 		endif
 	else
 		OS_NAME      := linux
@@ -189,6 +200,17 @@ else
 			else
 				ARCH := $(UNAME_M)
 			endif
+		endif
+		ifneq ($(wildcard external/boost/libs/json/include/boost/json/src.hpp),)
+			CXXFLAGS += -isystem external/boost/libs/json/include
+			BOOST_TRANSITIVE_DIRS := $(wildcard external/boost/libs/*/include)
+			ifneq ($(BOOST_TRANSITIVE_DIRS),)
+				CXXFLAGS += $(foreach d,$(BOOST_TRANSITIVE_DIRS),-isystem $(d))
+			else
+$(warning [RenWeb] Boost transitive headers not found in external/boost/libs/*/include. Initialize required external/boost submodules.)
+			endif
+		else
+$(warning [RenWeb] Boost.JSON headers not found in external/boost/libs/json/include.)
 		endif
 	endif
 endif
