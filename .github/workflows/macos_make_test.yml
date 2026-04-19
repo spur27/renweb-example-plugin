@@ -1,12 +1,12 @@
-name: Build Plugin (Linux)
+name: MacOS
 
 on:
   push:
   pull_request:
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build-macos:
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +27,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: my_renweb_plugin-linux
+          name: my_renweb_plugin-macos
           path: |
-            build/plugins/*.so
-            *.so
+            build/plugins/*.dylib
+            *.dylib

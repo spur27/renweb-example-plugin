@@ -1,4 +1,4 @@
-name: Build Plugin (Windows)
+name: Windows
 
 on:
   push:
