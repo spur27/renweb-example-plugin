@@ -39,9 +39,25 @@ If you intentionally need another Boost version, override
 `REQUIRED_BOOST_VERSION` in the make invocation and ensure the RenWeb engine
 was compiled against the same version.
 
-| Platform | Command |
-|----------|---------|
-| **All platforms** | `git -C external/boost submodule update --init --depth 1 libs/json libs/assert libs/config libs/container libs/container_hash libs/core libs/describe libs/endian libs/mp11 libs/predef libs/preprocessor libs/static_assert libs/system libs/throw_exception libs/type_traits libs/variant2 libs/winapi libs/move libs/intrusive libs/compat` |
+Initialize submodules in this order (top-level first, then required Boost libs):
+
+```sh
+# 1) Clone
+git clone <your-repo-url>
+cd my_renweb_plugin
+
+# 2) Initialize the top-level Boost submodule
+git submodule update --init --depth 1 external/boost
+
+# 3) Initialize only the Boost libs this plugin needs
+git -C external/boost submodule update --init --depth 1 \
+	libs/json libs/assert libs/config libs/container libs/container_hash \
+	libs/core libs/describe libs/endian libs/mp11 libs/predef \
+	libs/preprocessor libs/static_assert libs/system libs/throw_exception \
+	libs/type_traits libs/variant2 libs/winapi libs/move libs/intrusive libs/compat
+```
+
+If you already cloned the repo, run steps 2 and 3 from the project root.
 
 ## Building
 
