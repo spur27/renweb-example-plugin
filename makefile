@@ -29,6 +29,10 @@
 TOOLCHAIN :=
 REQUIRED_BOOST_VERSION := 109000
 
+ifneq ($(strip $(TOOLCHAIN)),)
+	CROSS_COMPILE := $(TOOLCHAIN)-
+endif
+
 # -----------------------------------------------------------------------------
 # OS / compiler / architecture detection
 # -----------------------------------------------------------------------------
@@ -137,11 +141,40 @@ else
 		CXX          := $(CROSS_COMPILE)g++
 		CXXFLAGS     := -std=c++20 -MMD -MP -fPIC -D_GNU_SOURCE
 		CXXFLAGS += $(SYSROOT) -O3 -flto -DRENWEB_EXPECTED_BOOST_VERSION=$(REQUIRED_BOOST_VERSION)
-		ifdef TOOLCHAIN
+		ifneq ($(strip $(TOOLCHAIN)),)
 			CXXFLAGS += -isystem /usr/$(TOOLCHAIN)/usr/local/include
 			LDFLAGS  := --sysroot=/usr/$(TOOLCHAIN) -L/lib -L/lib64 -L/usr/lib -L/usr/lib64
 		else
 			LDFLAGS  :=
+		endif
+		ifndef ARCH
+			ifeq ($(TOOLCHAIN),arm-linux-gnueabihf)
+				ARCH := arm32
+			else ifeq ($(TOOLCHAIN),aarch64-linux-gnu)
+				ARCH := arm64
+			else ifeq ($(TOOLCHAIN),i686-linux-gnu)
+				ARCH := x86_32
+			else ifeq ($(TOOLCHAIN),mips-linux-gnu)
+				ARCH := mips32
+			else ifeq ($(TOOLCHAIN),mipsel-linux-gnu)
+				ARCH := mips32el
+			else ifeq ($(TOOLCHAIN),mips64-linux-gnuabi64)
+				ARCH := mips64
+			else ifeq ($(TOOLCHAIN),mips64el-linux-gnuabi64)
+				ARCH := mips64el
+			else ifeq ($(TOOLCHAIN),powerpc-linux-gnu)
+				ARCH := powerpc32
+			else ifeq ($(TOOLCHAIN),powerpc64-linux-gnu)
+				ARCH := powerpc64
+			else ifeq ($(TOOLCHAIN),riscv64-linux-gnu)
+				ARCH := riscv64
+			else ifeq ($(TOOLCHAIN),s390x-linux-gnu)
+				ARCH := s390x
+			else ifeq ($(TOOLCHAIN),sparc64-linux-gnu)
+				ARCH := sparc64
+			else ifeq ($(TOOLCHAIN),x86_64-linux-gnu)
+				ARCH := x86_64
+			endif
 		endif
 		ifndef ARCH
 			UNAME_M := $(shell uname -m)

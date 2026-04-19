@@ -4,7 +4,8 @@
 # Usage:
 #   ./build_all_archs.sh [--arch <arch>] ...
 #
-# On Linux:   builds all 13 toolchain architectures (requires cross-compilers)
+# On Linux:   builds all supported architectures; x86_32 uses native multilib
+#             (-m32) by default and falls back to i686 toolchain if needed
 # On macOS:   builds arm64 + x86_64, then creates a universal .dylib via lipo
 # On Windows: builds x64 + x86 + arm64 via MSVC (requires VS 2022)
 
@@ -92,6 +93,22 @@ build_for_toolchain() {
     fi
 }
 
+build_linux_x86_32_multilib() {
+    print_building "x86_32" "native gcc/clang -m32"
+    if make clear TARGET=release ARCH=x86_32; then
+        if make TARGET=release ARCH=x86_32 -j$(nproc 2>/dev/null || echo 4); then
+            print_success "Built x86_32 via native -m32 multilib"
+            return 0
+        else
+            print_error "Failed x86_32 multilib build (install gcc-multilib/libc6-dev-i386 or equivalent)"
+            return 1
+        fi
+    else
+        print_error "Failed to clear for x86_32 multilib build"
+        return 1
+    fi
+}
+
 build_native() {
     local arch_name=$1
     print_building "$arch_name" "native"
@@ -166,6 +183,26 @@ build_linux() {
             continue
         fi
         total_count=$((total_count + 1))
+        if [ "$tc_arch" = "x86_32" ]; then
+            if build_linux_x86_32_multilib; then
+                success_count=$((success_count + 1))
+            else
+                if toolchain_exists "$toolchain"; then
+                    print_warning "native -m32 build failed, trying i686 toolchain fallback"
+                    if build_for_toolchain "$toolchain" "$toolchain"; then
+                        success_count=$((success_count + 1))
+                    else
+                        fail_count=$((fail_count + 1))
+                    fi
+                else
+                    print_warning "native -m32 build failed and $toolchain is unavailable"
+                    fail_count=$((fail_count + 1))
+                fi
+            fi
+            echo ""
+            continue
+        fi
+
         if toolchain_exists "$toolchain"; then
             if build_for_toolchain "$toolchain" "$toolchain"; then
                 success_count=$((success_count + 1))
@@ -305,7 +342,7 @@ main() {
                 echo "Usage: $0 [--arch <arch>]..."
                 echo "Builds the ${PLUGIN_NAME_DISPLAY} plugin for all architectures on the current OS."
                 echo "  --arch <arch>  Only build for the specified architecture (repeatable)"
-                echo "  Linux:   13 cross-compiled .so files (requires toolchains)"
+                echo "  Linux:   all supported .so targets; x86_32 uses native -m32 by default, then i686 toolchain as fallback"
                 echo "  macOS:   arm64 + x86_64 .dylib files + universal binary"
                 echo "  Windows: x86_64 + x86_32 + arm64 .dll files (requires VS 2022)"
                 exit 0 ;;
