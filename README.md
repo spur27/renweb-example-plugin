@@ -1,5 +1,11 @@
 # My RenWeb Plugin
 
+[![Build Linux](https://github.com/spur27/renweb-example-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/spur27/renweb-example-plugin/actions/workflows/build.yml)
+[![Build macOS](https://github.com/spur27/renweb-example-plugin/actions/workflows/build-macos.yml/badge.svg)](https://github.com/spur27/renweb-example-plugin/actions/workflows/build-macos.yml)
+[![Build Windows](https://github.com/spur27/renweb-example-plugin/actions/workflows/build-windows.yml/badge.svg)](https://github.com/spur27/renweb-example-plugin/actions/workflows/build-windows.yml)
+[![License](https://img.shields.io/github/license/spur27/renweb-example-plugin)](https://github.com/spur27/renweb-example-plugin/blob/main/LICENSE)
+![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C)
+
 A RenWeb plugin.
 
 ## Source layout

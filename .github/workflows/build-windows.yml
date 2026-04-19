@@ -1,19 +1,26 @@
-name: Build Plugin (Linux)
+name: Build Plugin (Windows)
 
 on:
   push:
   pull_request:
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build-windows:
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: true
 
+      - name: Set up MSVC developer environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install GNU make
+        run: choco install make --yes
+
       - name: Initialize required Boost modules
+        shell: bash
         run: |
           git -C external/boost submodule update --init --depth 1 \
             libs/json libs/assert libs/config libs/container libs/container_hash \
@@ -22,12 +29,13 @@ jobs:
             libs/type_traits libs/variant2 libs/winapi libs/move libs/intrusive libs/compat
 
       - name: Build
+        shell: bash
         run: make
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: my_renweb_plugin-linux
+          name: my_renweb_plugin-windows
           path: |
-            build/plugins/*.so
-            *.so
+            build/plugins/*.dll
+            *.dll
