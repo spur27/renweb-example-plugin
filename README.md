@@ -1,4 +1,4 @@
-# My RenWeb Plugin
+# RenWeb Example Plugin
 
 [![Linux (Ubuntu)](https://github.com/spur27/renweb-example-plugin/actions/workflows/linux_make_test.yml/badge.svg)](https://github.com/spur27/renweb-example-plugin/actions/workflows/build.yml)
 [![MacOS](https://github.com/spur27/renweb-example-plugin/actions/workflows/macos_make_test.yml/badge.svg)](https://github.com/spur27/renweb-example-plugin/actions/workflows/build-macos.yml)
@@ -11,7 +11,7 @@ A RenWeb plugin.
 ## Source layout
 
 ```
-my_renweb_plugin/
+renweb_example_plugin/
 ├── build/
 │   ├── renweb-<version>-<os>-<arch>  # downloaded engine executable
 │   ├── info.json                     # minimal launch config
@@ -23,9 +23,9 @@ my_renweb_plugin/
 │   └── boost/                        # pinned Boost submodule (boost-1.90.0)
 ├── include/
 │   ├── plugin.hpp          # RenWeb Plugin base class (fetched from engine)
-│   └── my_renweb_plugin.hpp   # Plugin class declaration
+│   └── renweb_example_plugin.hpp   # Plugin class declaration
 ├── src/
-│   └── my_renweb_plugin.cpp   # Plugin implementation (defines name + version)
+│   └── renweb_example_plugin.cpp   # Plugin implementation (defines name + version)
 ├── build_all_archs.sh      # Build for all OS/arch targets
 ├── build_for_release.sh    # Build all arches, collect binaries into release/
 └── makefile
